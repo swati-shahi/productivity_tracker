@@ -305,3 +305,47 @@ li small {
     background: #334155;
     color: #f1f5f9;
 }
+
+/* ================= WELCOME CARD UPGRADE ================= */
+
+.welcome-card {
+    background: linear-gradient(135deg, #1f4068, #3f72af);
+    color: white;
+    padding: 30px;
+}
+
+.welcome-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.welcome-card h2 {
+    font-size: 26px;
+    margin-bottom: 8px;
+}
+
+.welcome-card p {
+    opacity: 0.9;
+}
+
+.welcome-stats {
+    display: flex;
+    gap: 25px;
+}
+
+.welcome-stats div {
+    text-align: center;
+}
+
+.welcome-stats h3 {
+    font-size: 22px;
+}
+
+/* Dark mode support */
+.dark-mode .welcome-card {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+}
+
