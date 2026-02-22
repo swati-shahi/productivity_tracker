@@ -26,7 +26,7 @@
 
 <div class="dashboard">
 
-    <!-- Welcome Card -->
+    <!-- Welcome Section -->
     <div class="welcome-card">
         <h3 id="welcomeUser"></h3>
         <p>Let’s make today productive 🚀</p>
@@ -60,7 +60,6 @@
     <div class="task-list-card">
         <h3>Your Tasks</h3>
 
-        <!-- Filter Dropdown -->
         <select id="filterSelect" onchange="filterTasks()">
             <option value="All">Show All</option>
             <option value="Work">Work</option>
@@ -93,7 +92,10 @@
             </div>
         </div>
 
-        <canvas id="progressChart"></canvas>
+        <!-- Proper Sized Chart -->
+        <div style="height:300px; width:300px; margin:auto;">
+            <canvas id="progressChart"></canvas>
+        </div>
 
     </div>
 
