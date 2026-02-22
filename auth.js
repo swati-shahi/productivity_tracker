@@ -1,33 +1,32 @@
 // -------------------- SIGNUP --------------------
 function signupUser(event) {
-    event.preventDefault(); // stop page refresh
+    event.preventDefault();
 
     const name = document.getElementById("signupName").value;
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
 
+    const messageBox = document.getElementById("message");
+
     if (!name || !email || !password) {
-        alert("Please fill all fields");
+        showMessage("Please fill all fields", "error");
         return;
     }
 
-    // Save user data in localStorage
-    const user = {
-        name: name,
-        email: email,
-        password: password
-    };
-
+    const user = { name, email, password };
     localStorage.setItem("boostlyUser", JSON.stringify(user));
 
-    alert("Account created successfully!");
-    window.location.href = "login.html";
+    showMessage("Account created successfully! Redirecting...", "success");
+
+    setTimeout(() => {
+        window.location.href = "login.html";
+    }, 1500);
 }
 
 
 // -------------------- LOGIN --------------------
 function loginUser(event) {
-    event.preventDefault(); // stop page refresh
+    event.preventDefault();
 
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
@@ -35,24 +34,36 @@ function loginUser(event) {
     const storedUser = JSON.parse(localStorage.getItem("boostlyUser"));
 
     if (!storedUser) {
-        alert("No account found. Please sign up first.");
+        showMessage("No account found. Please sign up first.", "error");
         return;
     }
 
     if (email === storedUser.email && password === storedUser.password) {
-        alert("Login successful!");
-        window.location.href = "dashboard.html";
+        localStorage.setItem("isLoggedIn", "true");
+
+        showMessage("Login successful! Redirecting...", "success");
+
+        setTimeout(() => {
+            window.location.href = "dashboard.html";
+        }, 1500);
     } else {
-        alert("Invalid email or password");
+        showMessage("Invalid email or password", "error");
     }
 }
 
 
-// -------------------- DASHBOARD PROTECTION --------------------
-function checkAuth() {
-    const storedUser = localStorage.getItem("boostlyUser");
+// -------------------- MESSAGE FUNCTION --------------------
+function showMessage(text, type) {
+    const messageBox = document.getElementById("message");
+    messageBox.innerText = text;
+    messageBox.className = type;
+}
 
-    if (!storedUser) {
+
+// -------------------- AUTH CHECK --------------------
+function checkAuth() {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    if (!isLoggedIn) {
         window.location.href = "login.html";
     }
 }
@@ -60,6 +71,6 @@ function checkAuth() {
 
 // -------------------- LOGOUT --------------------
 function logoutUser() {
-    localStorage.removeItem("boostlyUser");
+    localStorage.removeItem("isLoggedIn");
     window.location.href = "login.html";
 }
