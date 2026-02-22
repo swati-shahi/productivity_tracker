@@ -4,24 +4,35 @@
     <title>Dashboard | Boostly</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body onload="checkAuth()">
-   
+<body onload="initDashboard()">
 
 <header class="navbar">
-    <h2>Boostly</h2>
-    <div>
-        <a href="index.html">Home</a>
-        <a href="login.html">Logout</a>
-    </div>
+    <h2>Boostly Dashboard</h2>
+    <button onclick="logoutUser()">Logout</button>
 </header>
 
-<div class="dashboard-container">
-    <h1>Welcome to your Dashboard 🎉</h1>
-    <p>You are successfully logged in.</p>
+<div class="dashboard">
+
+    <h3 id="welcomeUser"></h3>
+
+    <div class="task-section">
+        <input type="text" id="taskInput" placeholder="Enter new task">
+        <button onclick="addTask()">Add Task</button>
+    </div>
+
+    <ul id="taskList"></ul>
+
+    <div class="analytics">
+        <h3>Progress Analytics</h3>
+        <p>Today: <span id="dailyCount">0</span> tasks</p>
+        <p>This Week: <span id="weeklyCount">0</span> tasks</p>
+        <p>This Month: <span id="monthlyCount">0</span> tasks</p>
+    </div>
+
 </div>
+
 <script src="auth.js"></script>
+<script src="dashboard.js"></script>
+
 </body>
-
 </html>
-
-
