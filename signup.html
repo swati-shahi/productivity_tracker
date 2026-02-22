@@ -14,15 +14,19 @@
 <div class="auth-container">
     <div class="auth-box">
         <h2>Sign Up</h2>
-        <input type="text" placeholder="Full Name">
-        <input type="email" placeholder="Email">
-        <input type="password" placeholder="Password">
-        <button>Create Account</button>
+
+        <form onsubmit="signupUser(event)">
+            <input type="text" id="signupName" placeholder="Full Name" required>
+            <input type="email" id="signupEmail" placeholder="Email" required>
+            <input type="password" id="signupPassword" placeholder="Password" required>
+            <button type="submit">Create Account</button>
+        </form>
 
         <p>Already have an account? <a href="login.html">Login</a></p>
     </div>
 </div>
 
-</body>
+<script src="auth.js"></script>
 
+</body>
 </html>
