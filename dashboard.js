@@ -1,30 +1,35 @@
-let chart;
+import { collection, addDoc, getDocs, serverTimestamp, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+let chartInstance = null;
 
 /* ================= INIT DASHBOARD ================= */
-function initDashboard() {
-    checkAuth();
-
-    const user = JSON.parse(localStorage.getItem("boostlyUser"));
-
-    if (user) {
-        document.getElementById("welcomeUser").innerText =
-            "Welcome, " + user.name + " 👋";
-
-        // If you added upgraded welcome card
-        const usernameDisplay = document.getElementById("usernameDisplay");
-        if (usernameDisplay) {
-            usernameDisplay.innerText = user.name;
-        }
+async function initDashboard() {
+    // 1. Setup Button Listeners (This replaces onclick)
+    const addBtn = document.querySelector(".primary-btn");
+    if (addBtn) {
+        addBtn.addEventListener("click", addTask);
     }
 
-    loadTasks();
-    updateAnalytics();
-    updateWelcomeStats();
-    createChart();
+    const logoutBtn = document.querySelector(".logout-btn");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", () => {
+            localStorage.removeItem("isLoggedIn");
+            window.location.href = "login.html";
+        });
+    }
+
+    // 2. Display Name
+    const user = JSON.parse(localStorage.getItem("boostlyUser"));
+    if (user && document.getElementById("usernameDisplay")) {
+        document.getElementById("usernameDisplay").innerText = user.name;
+    }
+
+    // 3. Load Data from Firebase
+    refreshDashboard();
 }
 
-/* ================= ADD TASK ================= */
-function addTask() {
+/* ================= ADD TASK TO FIREBASE ================= */
+async function addTask() {
     const taskInput = document.getElementById("taskInput");
     const category = document.getElementById("categorySelect").value;
     const dueDate = document.getElementById("dueDate").value;
@@ -32,201 +37,128 @@ function addTask() {
 
     if (!taskInput.value.trim()) return;
 
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    try {
+        // Save to Firestore
+        await addDoc(collection(window.db, "tasks"), {
+            text: taskInput.value,
+            category: category,
+            dueDate: dueDate,
+            priority: priority,
+            completed: false,
+            createdAt: serverTimestamp()
+        });
 
-    tasks.push({
-        text: taskInput.value,
-        category,
-        dueDate,
-        priority,
-        completed: false,
-        date: new Date().toISOString()
-    });
-
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-    taskInput.value = "";
-
-    refreshDashboard();
-}
-
-/* ================= LOAD TASKS ================= */
-function loadTasks(filteredCategory = "All") {
-    const taskList = document.getElementById("taskList");
-    taskList.innerHTML = "";
-
-    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-
-    if (filteredCategory !== "All") {
-        tasks = tasks.filter(task => task.category === filteredCategory);
+        taskInput.value = "";
+        refreshDashboard(); // Refresh UI
+    } catch (error) {
+        console.error("Error adding task: ", error);
     }
-
-    tasks.forEach((task, index) => {
-        const li = document.createElement("li");
-        li.className = task.completed ? "completed-task" : "";
-
-        li.innerHTML = `
-            <div>
-                <strong>${task.text}</strong>
-                <br>
-                <small>${task.category} | ${task.priority} | Due: ${task.dueDate || "N/A"}</small>
-            </div>
-
-            <div>
-                <button onclick="toggleComplete(${index})">✔</button>
-                <button onclick="deleteTask(${index})">❌</button>
-            </div>
-        `;
-
-        taskList.appendChild(li);
-    });
 }
 
-/* ================= FILTER ================= */
-function filterTasks() {
-    const selected = document.getElementById("filterSelect").value;
-    loadTasks(selected);
-}
-
-/* ================= TOGGLE COMPLETE ================= */
-function toggleComplete(index) {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-
-    tasks[index].completed = !tasks[index].completed;
-
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-
-    // Add animation
+/* ================= LOAD TASKS FROM FIREBASE ================= */
+async function loadTasks(filteredCategory = "All") {
     const taskList = document.getElementById("taskList");
-    const item = taskList.children[index];
+    if (!taskList) return;
+    taskList.innerHTML = "Loading...";
 
-    if (item) {
-        item.classList.add("task-animate");
-        setTimeout(() => {
-            item.classList.remove("task-animate");
-        }, 400);
+    try {
+        const q = query(collection(window.db, "tasks"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        taskList.innerHTML = "";
+
+        querySnapshot.forEach((docSnap) => {
+            const task = docSnap.data();
+            const id = docSnap.id;
+
+            if (filteredCategory !== "All" && task.category !== filteredCategory) return;
+
+            const li = document.createElement("li");
+            li.className = task.completed ? "completed-task" : "";
+
+            li.innerHTML = `
+                <div>
+                    <strong>${task.text}</strong><br>
+                    <small>${task.category} | ${task.priority} | Due: ${task.dueDate || "N/A"}</small>
+                </div>
+                <div>
+                    <button class="complete-btn" data-id="${id}" data-status="${task.completed}">✔</button>
+                    <button class="delete-btn" data-id="${id}">❌</button>
+                </div>
+            `;
+            taskList.appendChild(li);
+        });
+
+        // Add event listeners to the new buttons
+        document.querySelectorAll(".complete-btn").forEach(btn => btn.onclick = () => toggleComplete(btn.dataset.id, btn.dataset.status));
+        document.querySelectorAll(".delete-btn").forEach(btn => btn.onclick = () => deleteTask(btn.dataset.id));
+
+        updateAnalytics(querySnapshot);
+    } catch (error) {
+        console.error("Error loading tasks: ", error);
     }
+}
 
+/* ================= FIREBASE ACTIONS ================= */
+async function toggleComplete(id, currentStatus) {
+    const taskRef = doc(window.db, "tasks", id);
+    await updateDoc(taskRef, { completed: currentStatus === "false" });
     refreshDashboard();
 }
 
-/* ================= DELETE TASK ================= */
-function deleteTask(index) {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-
-    tasks.splice(index, 1);
-
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-
+async function deleteTask(id) {
+    await deleteDoc(doc(window.db, "tasks", id));
     refreshDashboard();
 }
 
-/* ================= REFRESH ALL ================= */
 function refreshDashboard() {
     loadTasks();
-    updateAnalytics();
-    updateWelcomeStats();
-    updateStreak();
-    createChart();
 }
 
-/* ================= ANALYTICS SECTION ================= */
-function updateAnalytics() {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    const completed = tasks.filter(task => task.completed).length;
+/* ================= ANALYTICS & CHART ================= */
+function updateAnalytics(querySnapshot) {
+    let total = 0;
+    let completed = 0;
 
-    document.getElementById("dailyCount").innerText = tasks.length;
+    querySnapshot.forEach((doc) => {
+        total++;
+        if (doc.data().completed) completed++;
+    });
+
+    document.getElementById("totalTasks").innerText = total;
+    document.getElementById("completedTasks").innerText = completed;
+    document.getElementById("pendingTasks").innerText = total - completed;
+    document.getElementById("dailyCount").innerText = total;
     document.getElementById("weeklyCount").innerText = completed;
+    
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    document.getElementById("monthlyCount").innerText = percent + "%";
 
-    document.getElementById("monthlyCount").innerText =
-        tasks.length > 0
-            ? Math.round((completed / tasks.length) * 100) + "%"
-            : "0%";
+    updateChart(completed, total - completed);
 }
 
-/* ================= WELCOME CARD STATS ================= */
-function updateWelcomeStats() {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.completed).length;
-    const pending = total - completed;
-
-    const totalEl = document.getElementById("totalTasks");
-    const completedEl = document.getElementById("completedTasks");
-    const pendingEl = document.getElementById("pendingTasks");
-
-    if (totalEl) totalEl.innerText = total;
-    if (completedEl) completedEl.innerText = completed;
-    if (pendingEl) pendingEl.innerText = pending;
-}
-
-/* ================= DAILY STREAK ================= */
-function updateStreak() {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    const today = new Date().toDateString();
-
-    const completedToday = tasks.some(task =>
-        task.completed &&
-        new Date(task.date).toDateString() === today
-    );
-
-    let streakData = JSON.parse(localStorage.getItem("streakData")) || {
-        streak: 0,
-        lastDate: null
-    };
-
-    if (completedToday) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        if (streakData.lastDate === yesterday.toDateString()) {
-            streakData.streak += 1;
-        } else if (streakData.lastDate !== today) {
-            streakData.streak = 1;
-        }
-
-        streakData.lastDate = today;
-    }
-
-    localStorage.setItem("streakData", JSON.stringify(streakData));
-
-    const streakElement = document.getElementById("streakCount");
-    if (streakElement) {
-        streakElement.innerText = streakData.streak;
-    }
-}
-
-/* ================= CHART ================= */
-function createChart() {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-
-    const completed = tasks.filter(task => task.completed).length;
-    const pending = tasks.length - completed;
-
+function updateChart(completed, pending) {
     const ctx = document.getElementById("progressChart");
-
     if (!ctx) return;
+    if (chartInstance) chartInstance.destroy();
 
-    if (chart) chart.destroy();
-
-    chart = new Chart(ctx, {
-        type: "doughnut",
+    chartInstance = new Chart(ctx, {
+        type: "pie",
         data: {
             labels: ["Completed", "Pending"],
             datasets: [{
                 data: [completed, pending],
                 backgroundColor: ["#4CAF50", "#FF5252"]
             }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
         }
     });
 }
 
-/* ================= DARK MODE ================= */
-function toggleDarkMode() {
-    document.body.classList.toggle("dark-mode");
-}
+// Global scope helper for the dropdown filter
+window.filterTasks = () => {
+    const selected = document.getElementById("filterSelect").value;
+    loadTasks(selected);
+};
 
+window.toggleDarkMode = () => document.body.classList.toggle("dark-mode");
+
+window.addEventListener("DOMContentLoaded", initDashboard);
